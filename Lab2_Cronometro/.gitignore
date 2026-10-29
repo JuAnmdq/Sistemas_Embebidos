@@ -1,0 +1,29 @@
+# Salidas de compilación
+/Debug/
+/Release/
+/build/
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+*.log
+
+# Archivos locales del IDE y de macOS
+/.metadata/
+/.mxproject
+/.osx.project
+/.settings/language.settings.xml
+/.settings/com.st.stm32cube.ide.mcu.sfrview.prefs
+/*.launch
+.DS_Store
+/Imagen de Codex*.png
+
+# Configuración privada local
+.env
+.env.*
+!.env.example
