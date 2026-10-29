@@ -7,16 +7,16 @@ Laboratorios de Sistemas Embebidos, Facultad de Ingeniería, UNMdP. Un único re
 | [Lab1_GPIO](Lab1_GPIO/) | GPIO, pulsadores por polling y antirrebote | Compilación limpia verificada |
 | [Lab2_Cronometro](Lab2_Cronometro/) | Cronómetro, TIM2, display y pulsadores por EXTI | Compilación limpia verificada |
 | [Lab3_Temporizador](Lab3_Temporizador/) | Temporizador programable, UART, buffer circular y alarma PWM | Compilación limpia verificada |
-| [Lab4_RTOS](Lab4_RTOS/) | Próximo proyecto: CMSIS-RTOS2 sobre FreeRTOS | Carpeta inicial; aún sin configuración de MCU ni código |
+| [Lab4_RTOS](Lab4_RTOS/) | CMSIS-RTOS2 sobre FreeRTOS: bloqueo, prioridades y periodicidad | Hitos 1 y 2 verificados en placa; restantes pendientes |
 
 ## Abrir los proyectos
 
 1. Clonar este repositorio.
 2. En STM32CubeIDE, abrir **File → Import → General → Existing Projects into Workspace**.
 3. Seleccionar la raíz clonada y activar **Search for nested projects**.
-4. Importar Lab1, Lab2 y Lab3 y compilar cada uno con **Project → Build Project**, configuración **Debug**.
+4. Importar Lab1, Lab2, Lab3 y Lab4 y compilar cada uno con **Project → Build Project**, configuración **Debug**.
 
-También se puede importar cada carpeta por separado. Los README de los laboratorios describen su funcionamiento y montaje. Lab4 se configurará como un proyecto STM32 independiente antes de compilarlo.
+También se puede importar cada carpeta por separado. Los README de los laboratorios describen su funcionamiento y montaje. El README de Lab4 describe las tareas del Hito 1 y las pruebas manuales del Hito 2, organizadas en el módulo `tareas_rtos`.
 
 Se incluyen `.ioc`, fuentes, HAL/CMSIS, scripts de linker y configuración del IDE. Los tres proyectos se compilaron desde copias limpias con STM32CubeIDE 2.2.0, sin errores ni advertencias. Esa verificación no reemplaza la prueba en placa.
 

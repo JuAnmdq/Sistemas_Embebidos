@@ -16,8 +16,8 @@ build/
 *.launch
 .mxproject
 .osx.project
-.settings/language.settings.xml
-.settings/com.st.stm32cube.ide.mcu.sfrview.prefs
+**/.settings/language.settings.xml
+**/.settings/com.st.stm32cube.ide.mcu.sfrview.prefs
 *.o
 *.d
 *.su
