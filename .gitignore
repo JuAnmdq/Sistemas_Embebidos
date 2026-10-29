@@ -1,0 +1,33 @@
+# Sólo se versionan los laboratorios de Sistemas Embebidos
+/*
+!/.gitignore
+!/README.md
+!/Lab1_GPIO/
+!/Lab2_Cronometro/
+!/Lab3_Temporizador/
+!/Lab4_RTOS/
+
+# El workspace y las salidas se regeneran localmente
+.metadata/
+Debug/
+Release/
+build/
+.DS_Store
+*.launch
+.mxproject
+.osx.project
+.settings/language.settings.xml
+.settings/com.st.stm32cube.ide.mcu.sfrview.prefs
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+*.log
+.env
+.env.*
+!.env.example
