@@ -19,7 +19,7 @@ typedef struct {
     bool alarma_activa;
 } EstadoTemporizador;
 
-extern volatile bool aviso_alarma_pendiente;
+extern volatile bool notificar_alarma_activa;
 
 void TareaTemporizador(void *argumento);
 void SolicitarConfiguracionTemporizador(uint16_t segundos_solicitados);

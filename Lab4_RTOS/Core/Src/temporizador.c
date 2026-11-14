@@ -7,7 +7,7 @@
 extern TIM_HandleTypeDef htim9;
 
 static EstadoTemporizador estado;
-volatile bool aviso_alarma_pendiente;
+volatile bool notificar_alarma_activa;
 
 // TareaUART publica un solo pedido y espera que el temporizador lo atienda
 static volatile struct {
@@ -101,7 +101,7 @@ void TareaTemporizador(void *argumento)
                 estado.temporizador_activo = false;
                 HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2);
                 estado.alarma_activa = true;
-                aviso_alarma_pendiente = true;
+                notificar_alarma_activa = true;
             }
             ActualizarDisplay();
         }

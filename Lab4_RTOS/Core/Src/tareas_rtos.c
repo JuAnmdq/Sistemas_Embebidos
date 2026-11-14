@@ -100,12 +100,13 @@ static void TareaUART(void *argumento)
     IniciarRecepcionUART();
 
     while (1) {
+        // Envía ALARM y restablece la notificación de forma atómica
+        // para que otra tarea no cambie la variable compartida en el medio.
         int32_t estado_scheduler = osKernelLock();
 
-        if (aviso_alarma_pendiente) {
-            // Limpia el aviso para enviar ALARM una sola vez
-            aviso_alarma_pendiente = false;
+        if (notificar_alarma_activa) {
             TransmitirUART("ALARM\r\n");
+            notificar_alarma_activa = false;
         }
 
         osKernelRestoreLock(estado_scheduler);
