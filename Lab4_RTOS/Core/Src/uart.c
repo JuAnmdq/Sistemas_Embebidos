@@ -31,7 +31,7 @@ void IniciarRecepcionUART(void) {
 }
 
 /*
- * Se consulta por polling; mientras haya caracteres pendientes en el buffer:
+ * Cuando TareaUART recibe un aviso, procesa los caracteres pendientes en el buffer:
  * - Lee el carácter
  * - Actualiza la posición de lectura del buffer circular
  * - Procesa el carácter

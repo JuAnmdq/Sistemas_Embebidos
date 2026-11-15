@@ -3,6 +3,7 @@
 #include "pulsadores.h"
 #include "main.h"
 #include "cmsis_os.h"
+#include "tareas_rtos.h"
 
 extern TIM_HandleTypeDef htim9;
 
@@ -102,6 +103,7 @@ void TareaTemporizador(void *argumento)
                 HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2);
                 estado.alarma_activa = true;
                 notificar_alarma_activa = true;
+                NotificarTrabajoUART();
             }
             ActualizarDisplay();
         }

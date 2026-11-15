@@ -95,11 +95,20 @@ static void TareaDisplay(void *argumento)
     }
 }
 
+static osSemaphoreId_t notificar_trabajo_uart;
+
+void NotificarTrabajoUART(void)
+{
+    osSemaphoreRelease(notificar_trabajo_uart);
+}
+
 static void TareaUART(void *argumento)
 {
     IniciarRecepcionUART();
 
     while (1) {
+        osSemaphoreAcquire(notificar_trabajo_uart, osWaitForever);
+
         // Envía ALARM y restablece la notificación de forma atómica
         // para que otra tarea no cambie la variable compartida en el medio.
         int32_t estado_scheduler = osKernelLock();
@@ -112,14 +121,14 @@ static void TareaUART(void *argumento)
         osKernelRestoreLock(estado_scheduler);
 
         ProcesarComandosBuffer();
-
-        // Pasa a Blocked para ceder la CPU entre consultas al buffer
-        osDelay(1);
     }
 }
 
-void CrearTareasTemporizador(void)
+void InicializarTareasRTOS(void)
 {
+    // TareaUART espera hasta que llegue un byte nuevo o haya un ALARM para enviar.
+    notificar_trabajo_uart = osSemaphoreNew(1, 0, NULL);
+
     osThreadNew(TareaDisplay, NULL, &atributos_display);
     osThreadNew(TareaTemporizador, NULL, &atributos_cuenta);
     osThreadNew(TareaUART, NULL, &atributos_uart);

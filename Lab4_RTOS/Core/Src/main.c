@@ -129,7 +129,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   // CrearTareas();
-  CrearTareasTemporizador();
+  InicializarTareasRTOS();
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -483,6 +483,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART3) {
     AlmacenarCaracterRecibidoEnElBuffer();
+    NotificarTrabajoUART();
   }
 }
 

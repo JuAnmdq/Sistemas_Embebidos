@@ -2,6 +2,7 @@
 #define TAREAS_RTOS_H
 
 void CrearTareas();
-void CrearTareasTemporizador(void);
+void InicializarTareasRTOS(void);
+void NotificarTrabajoUART(void);
 
 #endif
