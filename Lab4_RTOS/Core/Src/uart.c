@@ -1,14 +1,18 @@
 #include "uart.h"
 #include "main.h"
-#include "temporizador.h"
+#include "cmsis_os.h"
+#include "tareas_rtos.h"
 
+#include <inttypes.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 #define SEGUNDOS_MAXIMOS             5999
 #define COMANDO_UART_SIZE            32
 #define BUFFER_UART_SIZE             64
 #define UART_TIMEOUT_MS              20
+#define CAPACIDAD_COLA_COMANDOS      10
 
 extern UART_HandleTypeDef huart3;
 
@@ -20,11 +24,41 @@ static char comando_uart[COMANDO_UART_SIZE] = "";
 static uint8_t pos_comando_uart = 0;
 static bool descartar_comando = false;
 
+static osMessageQueueId_t cola_comandos;
+static RespuestaTemporizador respuesta_compartida;
+static osSemaphoreId_t uart_respuesta_recibida;
+
 static void ProcesarCaracterUART(uint8_t caracter);
-static void ProcesarComandoUART(const char *comando);
-static void ProcesarComandoSet(const char *argumento);
+static void ProducirComandos(const char *comando);
+static bool ObtenerSegundosSet(const char *argumento, uint16_t *segundos);
 static uint16_t ConvertirDigitoASCII(char caracter);
-static void EnviarEstadoTemporizador(void);
+static void TransmitirRespuestaUART(const RespuestaTemporizador *respuesta);
+
+void InicializarComunicacionTemporizador(void)
+{
+    cola_comandos = osMessageQueueNew(CAPACIDAD_COLA_COMANDOS, sizeof(PedidoTemporizador), NULL);
+    uart_respuesta_recibida = osSemaphoreNew(1, 1, NULL);
+}
+
+static bool ProducirPedidoComando(PedidoTemporizador pedido)
+{
+    return uart_respuesta_recibida != NULL &&
+           osMessageQueuePut(cola_comandos, &pedido, 0, 0) == osOK;
+}
+
+bool ConsumirPedidoComando(PedidoTemporizador *pedido)
+{
+    return osSemaphoreGetCount(uart_respuesta_recibida) == 1 &&
+           osMessageQueueGet(cola_comandos, pedido, NULL, 0) == osOK;
+}
+
+void PublicarRespuestaUART(const RespuestaTemporizador *respuesta)
+{
+    respuesta_compartida = *respuesta;
+    // Al publicar una nueva respuesta, pone la respuesta como no vista por la UART
+    osSemaphoreAcquire(uart_respuesta_recibida, 0);
+    NotificarTrabajoUART();
+}
 
 void IniciarRecepcionUART(void) {
 	HAL_UART_Receive_IT(&huart3, &caracter_uart_rx, 1);
@@ -88,7 +122,7 @@ static void ProcesarCaracterUART(uint8_t caracter) {
 	if (enter_presionado) {
 		if (!descartar_comando && pos_comando_uart > 0) {
 			comando_uart[pos_comando_uart] = '\0';
-			ProcesarComandoUART(comando_uart);
+			ProducirComandos(comando_uart);
 		}
 		pos_comando_uart = 0;
 		descartar_comando = false;
@@ -104,30 +138,35 @@ static void ProcesarCaracterUART(uint8_t caracter) {
 	}
 }
 
-static void ProcesarComandoUART(const char *comando) {
+static void ProducirComandos(const char *comando) {
+	PedidoTemporizador pedido = { 0 };
+	bool es_comando_valido = true;
+
 	if (strncmp(comando, "SET ", 4) == 0) {
-		ProcesarComandoSet(&comando[4]);
+		uint16_t segundos = 0;
+		es_comando_valido = ObtenerSegundosSet(&comando[4], &segundos);
+		if (es_comando_valido) {
+			pedido = (PedidoTemporizador){ .tipo = PEDIDO_SET, .segundos = segundos };
+		}
 	} else if (strcmp(comando, "START") == 0) {
-		EnviarPedidoTemporizador(PEDIDO_START);
-		TransmitirUART("\r\nOK\r\n");
+		pedido.tipo = PEDIDO_START;
 	} else if (strcmp(comando, "PAUSE") == 0) {
-		EnviarPedidoTemporizador(PEDIDO_PAUSE);
-		TransmitirUART("\r\nOK\r\n");
+		pedido.tipo = PEDIDO_PAUSE;
 	} else if (strcmp(comando, "RESET") == 0) {
-		EnviarPedidoTemporizador(PEDIDO_RESET);
-		TransmitirUART("\r\nOK\r\n");
+		pedido.tipo = PEDIDO_RESET;
 	} else if (strcmp(comando, "STATUS") == 0) {
-		EnviarEstadoTemporizador();
+		pedido.tipo = PEDIDO_STATUS;
 	} else {
+		es_comando_valido = false;
+	}
+
+	if (!es_comando_valido || !ProducirPedidoComando(pedido)) {
 		TransmitirUART("\r\nERROR\r\n");
 	}
 }
 
-/*
- * Convierte y valida los segundos recibidos después de SET
- * Si son válidos, configura el temporizador y responde OK; de lo contrario, responde ERROR
- */
-static void ProcesarComandoSet(const char *argumento) {
+// Convierte y valida los segundos recibidos después de SET
+static bool ObtenerSegundosSet(const char *argumento, uint16_t *segundos) {
 	bool es_comando_valido = argumento[0] != '\0';
 	uint16_t segundos_solicitados = 0;
 	uint16_t posicion = 0;
@@ -149,30 +188,67 @@ static void ProcesarComandoSet(const char *argumento) {
 	}
 
 	if (es_comando_valido) {
-		SolicitarConfiguracionTemporizador(segundos_solicitados);
-		TransmitirUART("\r\nOK\r\n");
-	} else {
-		TransmitirUART("\r\nERROR\r\n");
+		*segundos = segundos_solicitados;
 	}
+	return es_comando_valido;
 }
 
-static void EnviarEstadoTemporizador(void) {
-    EstadoTemporizador estado = ConsultarEstadoTemporizador();
-    uint16_t minutos = estado.segundos_restantes / 60;
-    uint16_t segundos = estado.segundos_restantes % 60;
-    char tiempo[] = {
-        '0' + minutos / 10, '0' + minutos % 10, '.',
-        '0' + segundos / 10, '0' + segundos % 10, '\r', '\n', '\0'
-    };
-
-    if (estado.alarma_activa) {
-        TransmitirUART("\r\nALARM ");
-    } else if (estado.temporizador_activo) {
-        TransmitirUART("\r\nRUNNING ");
-    } else {
-        TransmitirUART("\r\nPAUSED ");
+void ConsumirRespuestaDelTemporizador(void)
+{
+    if (uart_respuesta_recibida != NULL &&
+        osSemaphoreGetCount(uart_respuesta_recibida) == 0) {
+        const RespuestaTemporizador respuesta = respuesta_compartida;
+        osSemaphoreRelease(uart_respuesta_recibida); // UART ya tiene su copia.
+        TransmitirRespuestaUART(&respuesta);
     }
-    TransmitirUART(tiempo);
+}
+
+static void TransmitirRespuestaUART(const RespuestaTemporizador *respuesta)
+{
+    if (!respuesta->ok) {
+        TransmitirUART("\r\nERROR\r\n");
+        return;
+    }
+
+    char mensaje[32];
+
+    const PedidoTemporizador pedido = respuesta->pedido;
+
+    switch (pedido.tipo) {
+    case PEDIDO_SET:
+        snprintf(mensaje, sizeof(mensaje), "\r\nOK SET %" PRIu16 "\r\n",
+                 pedido.segundos);
+        break;
+    case PEDIDO_START:
+        TransmitirUART("\r\nOK START\r\n");
+        return;
+    case PEDIDO_PAUSE:
+        TransmitirUART("\r\nOK PAUSE\r\n");
+        return;
+    case PEDIDO_RESET:
+        TransmitirUART("\r\nOK RESET\r\n");
+        return;
+    case PEDIDO_STATUS: {
+        const StatusTemporizador status_actual = respuesta->status;
+        const char *nombre_estado = "PAUSED";
+        if (status_actual.alarma_activa) {
+            nombre_estado = "ALARM";
+        } else if (status_actual.temporizador_activo) {
+            nombre_estado = "RUNNING";
+        }
+
+        unsigned minutos = status_actual.segundos_restantes / 60;
+        unsigned segundos = status_actual.segundos_restantes % 60;
+        snprintf(mensaje, sizeof(mensaje), "\r\n%s %02u.%02u\r\n",
+                 nombre_estado, minutos, segundos);
+        break;
+    }
+    default:
+        snprintf(mensaje, sizeof(mensaje), "\r\nERROR\r\n");
+        break;
+    }
+
+    TransmitirUART(mensaje);
 }
 
 static uint16_t ConvertirDigitoASCII(char caracter) {

@@ -55,6 +55,7 @@ static const osThreadAttr_t atributos_cuenta = {
 
 static const osThreadAttr_t atributos_uart = {
     .name = "UART",
+    .stack_size = 1024, // Margen para snprintf al formatear las respuestas.
     .priority = osPriorityNormal,
 };
 
@@ -120,14 +121,16 @@ static void TareaUART(void *argumento)
 
         osKernelRestoreLock(estado_scheduler);
 
+        ConsumirRespuestaDelTemporizador();
         ProcesarComandosBuffer();
     }
 }
 
 void InicializarTareasRTOS(void)
 {
-    // TareaUART espera hasta que llegue un byte nuevo o haya un ALARM para enviar.
+    // Un aviso despierta a UART por RX, una respuesta o una alarma.
     notificar_trabajo_uart = osSemaphoreNew(1, 0, NULL);
+    InicializarComunicacionTemporizador();
 
     osThreadNew(TareaDisplay, NULL, &atributos_display);
     osThreadNew(TareaTemporizador, NULL, &atributos_cuenta);

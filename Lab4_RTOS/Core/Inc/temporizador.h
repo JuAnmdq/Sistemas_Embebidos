@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 typedef enum {
-    SIN_PEDIDO_AL_TEMPORIZADOR,
     PEDIDO_SET,
     PEDIDO_START,
     PEDIDO_PAUSE,
@@ -14,16 +13,24 @@ typedef enum {
 } TipoPedidoTemporizador;
 
 typedef struct {
+    TipoPedidoTemporizador tipo;
+    uint16_t segundos;
+} PedidoTemporizador;
+
+typedef struct {
     uint16_t segundos_restantes;
     bool temporizador_activo;
     bool alarma_activa;
-} EstadoTemporizador;
+} StatusTemporizador;
+
+typedef struct {
+    bool ok;
+    PedidoTemporizador pedido;
+    StatusTemporizador status;
+} RespuestaTemporizador;
 
 extern volatile bool notificar_alarma_activa;
 
 void TareaTemporizador(void *argumento);
-void SolicitarConfiguracionTemporizador(uint16_t segundos_solicitados);
-void EnviarPedidoTemporizador(TipoPedidoTemporizador tipo);
-EstadoTemporizador ConsultarEstadoTemporizador(void);
 
 #endif
